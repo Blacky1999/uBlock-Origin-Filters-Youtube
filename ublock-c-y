@@ -2,29 +2,38 @@ import os
 import requests
 import tempfile
 import shutil
+import time
+import filecmp
 
-print("*** uAssets: updating remote assets...")
+# Setze die Wartezeit zwischen den Iterationen in Sekunden
+wait_time = 60 * 60  # zum Beispiel eine Stunde
 
-assets = {
-    'thirdparties/pgl.yoyo.org/as/serverlist': 'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=1&startdate%5Bday%5D=&startdate%5Bmonth%5D=&startdate%5Byear%5D=&mimetype=plaintext',
-    'thirdparties/publicsuffix.org/list/effective_tld_names.dat': 'https://publicsuffix.org/list/public_suffix_list.dat',
-    'thirdparties/urlhaus-filter/urlhaus-filter-online.txt': 'https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-online.txt'
-}
+while True:
+    print("*** uAssets: updating remote assets...")
 
-for local_url, remote_url in assets.items():
-    print(f"*** Downloading {remote_url}")
-    response = requests.get(remote_url, timeout=30)
+    assets = {
+        'thirdparties/pgl.yoyo.org/as/serverlist': 'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=1&startdate%5Bday%5D=&startdate%5Bmonth%5D=&startdate%5Byear%5D=&mimetype=plaintext',
+        'thirdparties/publicsuffix.org/list/effective_tld_names.dat': 'https://publicsuffix.org/list/public_suffix_list.dat',
+        'thirdparties/urlhaus-filter/urlhaus-filter-online.txt': 'https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-online.txt'
+    }
 
-    if response.status_code == 200:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file_name = temp_file.name
-            temp_file.write(response.content)
+    for local_url, remote_url in assets.items():
+        print(f"*** Downloading {remote_url}")
+        response = requests.get(remote_url, timeout=30)
 
-        if os.path.getsize(temp_file_name) > 0:
-            if not os.path.exists(local_url) or not filecmp.cmp(temp_file_name, local_url, shallow=False):
-                print(f"    New version found: {local_url}")
-                shutil.move(temp_file_name, local_url)
+        if response.status_code == 200:
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                temp_file_name = temp_file.name
+                temp_file.write(response.content)
+
+            if os.path.getsize(temp_file_name) > 0:
+                if not os.path.exists(local_url) or not filecmp.cmp(temp_file_name, local_url, shallow=False):
+                    print(f"    New version found: {local_url}")
+                    shutil.move(temp_file_name, local_url)
+                else:
+                    os.remove(temp_file_name)
             else:
                 os.remove(temp_file_name)
-        else:
-            os.remove(temp_file_name)
+
+    print(f"*** Warte für {wait_time} Sekunden bis zur nächsten Aktualisierung.")
+    time.sleep(0.5)
