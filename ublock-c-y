@@ -1,0 +1,30 @@
+import os
+import requests
+import tempfile
+import shutil
+
+print("*** uAssets: updating remote assets...")
+
+assets = {
+    'thirdparties/pgl.yoyo.org/as/serverlist': 'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=1&startdate%5Bday%5D=&startdate%5Bmonth%5D=&startdate%5Byear%5D=&mimetype=plaintext',
+    'thirdparties/publicsuffix.org/list/effective_tld_names.dat': 'https://publicsuffix.org/list/public_suffix_list.dat',
+    'thirdparties/urlhaus-filter/urlhaus-filter-online.txt': 'https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-online.txt'
+}
+
+for local_url, remote_url in assets.items():
+    print(f"*** Downloading {remote_url}")
+    response = requests.get(remote_url, timeout=30)
+
+    if response.status_code == 200:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file_name = temp_file.name
+            temp_file.write(response.content)
+
+        if os.path.getsize(temp_file_name) > 0:
+            if not os.path.exists(local_url) or not filecmp.cmp(temp_file_name, local_url, shallow=False):
+                print(f"    New version found: {local_url}")
+                shutil.move(temp_file_name, local_url)
+            else:
+                os.remove(temp_file_name)
+        else:
+            os.remove(temp_file_name)
